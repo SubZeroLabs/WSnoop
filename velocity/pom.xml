@@ -30,11 +30,6 @@
             <version>0.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>
-            <groupId>com.teesoft</groupId>
-            <artifactId>jackson-dataformat-toml</artifactId>
-            <version>1.0</version>
-        </dependency>
-        <dependency>
             <groupId>com.velocitypowered</groupId>
             <artifactId>velocity-api</artifactId>
             <version>3.0.1</version>

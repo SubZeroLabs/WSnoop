@@ -1,7 +1,7 @@
 package io.github.subzerolabs.wsnoop.velocity;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
-import com.teesoft.jackson.dataformat.toml.TOMLMapper;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
@@ -41,9 +41,8 @@ public class WSnoopPlugin {
     private Logger logger;
 
     private WSnoopConfiguration loadConfiguration() throws IOException {
-        TOMLMapper mapper = new TOMLMapper();
-
-        Path configPath = this.dataDirectory.resolve("config.toml");
+        ObjectMapper mapper = new ObjectMapper();
+        Path configPath = this.dataDirectory.resolve("config.json");
         if (Files.exists(configPath)) {
             try (InputStream reader = Files.newInputStream(configPath)) {
                 return mapper.readValue(reader, JacksonConfiguration.class);
@@ -56,7 +55,7 @@ public class WSnoopPlugin {
                         Duration.ofDays(10).toMillis(),
                         this.dataDirectory.resolve("relationships")
                 );
-                mapper.writeValue(writer, configuration);
+                mapper.writerWithDefaultPrettyPrinter().writeValue(writer, configuration);
                 return configuration;
             }
         }

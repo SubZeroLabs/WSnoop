@@ -39,6 +39,9 @@ public class JsonMessageTransactionStore implements MessageTransactionStore {
     @Override
     public void storeTransaction(UUID source, UUID destination, MessageTransaction transaction) throws IOException {
         var path = configuration.getMessageDirectory().resolve(source.toString()).resolve(destination.toString());
+        if (!Files.exists(path)) {
+            Files.createDirectories(path);
+        }
         var length = Files.list(path).count();
         if (configuration.getMaxStoredRelationshipTransactions() > 0 && length >= configuration.getMaxStoredRelationshipTransactions()) {
             Files.list(path)
@@ -70,6 +73,9 @@ public class JsonMessageTransactionStore implements MessageTransactionStore {
     @Override
     public List<TransactionPair> resolveTransactions(UUID source) throws IOException {
         var path = configuration.getMessageDirectory().resolve(source.toString());
+        if (!Files.exists(path)) {
+            Files.createDirectories(path);
+        }
         return Files.list(path).flatMap(sub -> {
             UUID uuid = UUID.fromString(sub.getFileName().toString());
             try {
@@ -91,6 +97,9 @@ public class JsonMessageTransactionStore implements MessageTransactionStore {
     @Override
     public List<TransactionPair> resolveTransactions(UUID source, UUID destination) throws IOException {
         var path = configuration.getMessageDirectory().resolve(source.toString()).resolve(destination.toString());
+        if (!Files.exists(path)) {
+            Files.createDirectories(path);
+        }
         return Files.list(path).map(sub -> {
             try (InputStream reader = Files.newInputStream(sub)) {
                 return new TransactionPair(destination, this.objectMapper.readValue(reader, MessageTransaction.class));
