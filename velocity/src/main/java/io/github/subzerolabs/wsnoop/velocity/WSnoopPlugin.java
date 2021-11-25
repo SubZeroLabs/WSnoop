@@ -78,16 +78,16 @@ public class WSnoopPlugin {
 
         CommandManager meta = this.proxyServer.getCommandManager();
         meta.register(
-                meta.metaBuilder("message_1").build(),
+                meta.metaBuilder("message").build(),
                 new MessageCommand(this.proxyServer, messageSink)
         );
         meta.register(
-                meta.metaBuilder("reply_1").build(),
+                meta.metaBuilder("reply").build(),
                 new ReplyCommand(this.proxyServer, messageSink)
         );
         meta.register(
-                meta.metaBuilder("history_1").build(),
-                new HistoryCommand(this.logger, messageSink)
+                meta.metaBuilder("history").build(),
+                new HistoryCommand(messageSink)
         );
     }
 }

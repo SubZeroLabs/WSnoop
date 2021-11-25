@@ -1,54 +1,27 @@
 package io.github.subzerolabs.wsnoop.velocity.commands;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.velocitypowered.api.command.SimpleCommand;
-import com.velocitypowered.api.proxy.ProxyServer;
 import io.github.subzerolabs.wsnoop.velocity.MessageSink;
+import kong.unirest.JsonNode;
 import kong.unirest.Unirest;
+import kong.unirest.json.JSONObject;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.Optional;
 import java.util.UUID;
 
 // using https://playerdb.co/api/player/minecraft/
 
+@SuppressWarnings("ClassCanBeRecord")
 public class HistoryCommand implements SimpleCommand {
     private final static SimpleDateFormat SDF = new SimpleDateFormat("dd/MM/yyyy kk:mm:ss");
     private final MessageSink messageSink;
-    private final ObjectMapper objectMapper;
 
-    public HistoryCommand(Logger logger, MessageSink messageSink) {
+    public HistoryCommand(MessageSink messageSink) {
         this.messageSink = messageSink;
-        this.objectMapper = new ObjectMapper();
-        this.objectMapper.setDefaultLeniency(true);
-        Unirest.config().setObjectMapper(new kong.unirest.ObjectMapper() {
-            @Override
-            public <T> T readValue(String value, Class<T> valueType) {
-                try {
-                    return HistoryCommand.this.objectMapper.readValue(value, valueType);
-                } catch (JsonProcessingException e) {
-                    logger.error("Error parsing json.", e);
-                    return null;
-                }
-            }
-
-            @Override
-            public String writeValue(Object value) {
-                try {
-                    return HistoryCommand.this.objectMapper.writeValueAsString(value);
-                } catch (JsonProcessingException e) {
-                    logger.error("Error serializing json.", e);
-                    return "{}";
-                }
-            }
-        });
     }
 
     @Override
@@ -58,10 +31,34 @@ public class HistoryCommand implements SimpleCommand {
             return;
         }
         try {
-            String name1 = invocation.arguments()[0];
-            String name2 = invocation.arguments()[1];
-            UUID player1 = playerToUUID(name1);
-            UUID player2 = playerToUUID(name2);
+            String _name1 = invocation.arguments()[0];
+            UUID _player1;
+            try {
+                _player1 = UUID.fromString(_name1);
+                _name1 = _name1.substring(0, 6);
+            } catch (IllegalArgumentException unused) {
+                _player1 = playerToUUID(_name1);
+            }
+
+            UUID _player2;
+            String _name2 = invocation.arguments()[1];
+            try {
+                _player2 = UUID.fromString(_name2);
+                _name2 = _name2.substring(0, 6);
+            } catch (IllegalArgumentException unused) {
+                _player2 = playerToUUID(_name2);
+            }
+
+            final String name1 = _name1;
+            final String name2 = _name2;
+            final UUID player1 = _player1;
+            final UUID player2 = _player2;
+
+            if (player1 == null || player2 == null) {
+                invocation.source().sendMessage(Component.text("Could not resolve both users. Please try again.", NamedTextColor.RED));
+                return;
+            }
+
             messageSink.getRelationship(player1, player2).forEach((uuid, transaction) -> {
                 String source = resolveName(player1, name1, player2, name2, uuid);
                 String destination = resolveName(player1, name1, player2, name2, transaction.destination());
@@ -93,32 +90,13 @@ public class HistoryCommand implements SimpleCommand {
     }
 
     private UUID playerToUUID(String player) throws IOException {
-        PlayerDBResponse response = Unirest
+        JsonNode response = Unirest
                 .get("https://playerdb.co/api/player/minecraft/%s".formatted(player))
-                .asObject(PlayerDBResponse.class)
-                .getBody();
-        if (response == null || !response.success()) {
+                .asJson().getBody();
+        JSONObject object;
+        if (response == null || !(object = response.getObject()).getBoolean("success")) {
             return null;
         }
-        return response.data.map(item -> item.player.id).orElse(null);
-    }
-
-    private static record DataStep2(
-            String username,
-            UUID id,
-            @JsonProperty("raw_id") String rawId,
-            String avatar
-    ) {
-    }
-
-    private static record DataStep1(DataStep2 player) {
-    }
-
-    private static record PlayerDBResponse(
-            String code,
-            Optional<DataStep1> data,
-            String message,
-            boolean success
-    ) {
+        return UUID.fromString(object.getJSONObject("data").getJSONObject("player").getString("id"));
     }
 }
